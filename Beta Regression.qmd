@@ -1,0 +1,147 @@
+---
+title: "Capstone Project: Beta Regression Model"
+author: Megan Marsh
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: true
+format: 
+  html:
+    embed-resources: true
+editor: source
+---
+
+```{r}
+CapstoneProjectUpdated2 <- read.csv("Capstone/CapstoneProjectUpdated2 - CapstoneProjectUpdated (1).csv")
+#omit missing values (CapstoneProjectUpdated2Clean has additional variables than CapstoneUpdatedClean)
+CapstoneProjectUpdated2Clean <- na.omit(CapstoneProjectUpdated2)
+```
+
+
+```{r}
+#histogram of graduation rates
+hist(CapstoneProjectUpdated2Clean$GraduationRate, main = "Histogram of Graduation Rates", xlab = "Graduation Rate")
+
+#boxplot of graduation rates
+boxplot(CapstoneProjectUpdated2Clean$GraduationRate, main = "Boxplot of Graduation Rates")
+
+#density plot of graduation rates
+plot(density(CapstoneProjectUpdated2Clean$GraduationRate), main = "Density Plot of Graduation Rates", xlab = "Graduation Rate")
+
+#Q-Q plot of graduation rates
+qqnorm(CapstoneProjectUpdated2Clean$GraduationRate)
+qqline(CapstoneProjectUpdated2Clean$GraduationRate)
+
+#summary statistics of graduation rate
+summary(CapstoneProjectUpdated2Clean$GraduationRate)
+
+#skewness and kurtosis of graduation rate
+if (!require("e1071")) install.packages("e1071")
+library(e1071)
+skewness(CapstoneProjectUpdated2Clean$GraduationRate)
+kurtosis(CapstoneProjectUpdated2Clean$GraduationRate)
+
+#shapiro-wilk test (for normality- repreated as done in multivariate linear regression model):
+shapiro.test(CapstoneProjectUpdated2Clean$GraduationRate)
+
+#kolmogorov-smirnov test (compared to a specific distribution, e.g., normal):
+ks.test(CapstoneProjectUpdated2Clean$GraduationRate, "pnorm", mean = mean(CapstoneProjectUpdated2Clean$GraduationRate), sd = sd(CapstoneProjectUpdated2Clean$GraduationRate))
+
+#check for 0-1 range to deem beta regression appropriate
+range(CapstoneProjectUpdated2Clean$GraduationRate)
+```
+
+Beta regression is the preferred method for modeling graduation rates because it directly addresses the bounded nature, potential heteroscedasticity, and possible skewness of this type of data. Linear regression can be problematic and lead to inaccurate results. Always prioritize beta regression when your outcome is a proportion or percentage like a graduation rate.
+
+
+```{r}
+if (!require("betareg")) install.packages("betareg")
+library(betareg)
+
+#convert percents to proportions
+CapstoneProjectUpdated2Clean$GraduationProportion <- CapstoneProjectUpdated2Clean$GraduationRate / 100
+CapstoneProjectUpdated2Clean$WhiteProportion <- CapstoneProjectUpdated2Clean$PercentWhite / 100
+CapstoneProjectUpdated2Clean$WomenProportion <- CapstoneProjectUpdated2Clean$PercentWomen / 100
+CapstoneProjectUpdated2Clean$RetentionProportion <- CapstoneProjectUpdated2Clean$RetentionRate / 100
+
+
+#transform 0 and 1 values as beta regression do not allow for them
+n <- nrow(CapstoneProjectUpdated2Clean)
+CapstoneProjectUpdated2Clean$GraduationProportionTransformed <- (CapstoneProjectUpdated2Clean$GraduationProportion * (n - 1) + 0.5) / n
+
+
+#check if the response variable is within (0, 1)
+min_grad <- min(CapstoneProjectUpdated2Clean$GraduationProportionTransformed)
+max_grad <- max(CapstoneProjectUpdated2Clean$GraduationProportionTransformed)
+
+if (min_grad > 0 && max_grad < 1) {
+  print("Response variable is within (0, 1).")
+} else {
+  print("Warning: Response variable is not strictly within (0, 1).")
+  print(paste("Minimum:", min_grad, "Maximum:", max_grad))
+}
+
+
+#beta regression model
+beta_model <- betareg(GraduationProportionTransformed ~ CovidIndicator + WhiteProportion + WomenProportion + Staff:CovidIndicator + AvgInStateTuition + RetentionProportion + TotalEnrollment + AvgPellGrant + AvgStudentLoans, data = CapstoneProjectUpdated2Clean)
+summary(beta_model)
+```
+
+
+```{r}
+#find outlier index
+outlier_index <- which(is.infinite(residuals(beta_model)))
+print(outlier_index)
+
+#view outlier(s)
+print(CapstoneProjectUpdated2Clean[outlier_index, ])
+
+#remove select few outliers and re-run model
+if (length(outlier_index) > 0) {
+  CapstoneProjectUpdated2Clean <- CapstoneProjectUpdated2Clean[-outlier_index, ]
+  
+  beta_model <- betareg(GraduationProportionTransformed ~ CovidIndicator + PercentWhite + PercentWomen + Staff:CovidIndicator + AvgInStateTuition + RetentionRate + TotalEnrollment + AvgPellGrant + AvgStudentLoans, data = CapstoneProjectUpdated2Clean)
+  summary(beta_model)
+}
+```
+
+
+```{r}
+#verify no multicollinearity
+library(car) 
+
+vif(beta_model, type="predictor")
+```
+
+All value inflation factors are close to one, solidifying no multicollinearity. 
+
+```{r}
+#coefficients from model
+coefs <- coef(beta_model)
+
+#exponentiate the coefficients to get odds ratios
+odds_ratios <- exp(coefs)
+
+print(odds_ratios)
+```
+
+```{r}
+#confidence intervals for coefficients
+confint(beta_model) 
+```
+
+
+```{r}
+library(ggplot2)
+
+predicted_values <- predict(beta_model, newdata = CapstoneProjectUpdated2Clean, type = "response")
+
+ggplot(data.frame(Actual = CapstoneProjectUpdated2Clean$GraduationProportionTransformed, Predicted = predicted_values), 
+       aes(x = Actual, y = Predicted)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(title = "Predicted vs. Actual Graduation Proportions",
+       x = "Actual Graduation Proportion (Transformed)",
+       y = "Predicted Graduation Proportion (Transformed)")
+```

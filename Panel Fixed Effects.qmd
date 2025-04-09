@@ -1,0 +1,88 @@
+---
+title: "Capstone Project: Fixed Effects Model"
+author: Megan Marsh
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: true
+format: 
+  html:
+    embed-resources: true
+editor: source
+---
+
+
+```{r}
+library(plm)
+CapstoneProjectUpdated2Clean <- read.csv("Capstone/CapstoneProjectUpdated2 - CapstoneProjectUpdated (1).csv")  
+panel_data <- pdata.frame(CapstoneProjectUpdated2Clean, index = c("UnitID", "Year"))
+```
+
+
+```{r}
+#fixed effects model (individual effects within)
+fixed_effects_model <- plm(GraduationRate ~ CovidIndicator + PercentWhite + PercentWomen + 
+                               Staff:CovidIndicator + AvgInStateTuition + RetentionRate + 
+                               TotalEnrollment + AvgPellGrant + AvgStudentLoans, 
+                             data = panel_data, model = "within")
+```
+
+```{r}
+summary(fixed_effects_model)
+
+#random effects model
+random_effects_model <- plm(GraduationRate ~ CovidIndicator + PercentWhite + PercentWomen +
+                               Staff:CovidIndicator + AvgInStateTuition + RetentionRate +
+                             TotalEnrollment + AvgPellGrant + AvgStudentLoans,
+                            data = panel_data, model = "random")
+summary(random_effects_model)
+```
+
+
+```{r}
+#hausman test: to decide if between fixed and random effects
+phtest(fixed_effects_model, random_effects_model)
+#fixed Effects more appropriate
+```
+
+The Hausman Test verified the use of the fixed-effects model over the random-effects model. 
+
+```{r}
+#To check for serial correlation:
+pbgtest(fixed_effects_model)
+```
+
+Based on the Breusch-Godfrey/Wooldridge test, there is no statistically significant evidence of serial correlation in the idiosyncratic errors of your panel data model at the 0.05 significance level. This suggests that the error terms for a given university across different time periods are likely independent after accounting for the other variables in your model.
+
+```{r}
+#breusch-pagan test for cross-sectional dependence 
+#null hypothesis: no cross-sectional dependence in the error terms (or residuals) of the different cross-sectional units
+pcdtest(fixed_effects_model, test = c("lm")) 
+```
+
+The Breusch-Pagan Test yields a very small p-values (below the chosen significance level of 0.05), providing sufficient evidence to reject the null hypothesis of no cross-sectional dependence in the error terms (or residuals) of the different cross-sectional units. This mean robust standard errors must be used on model to produce reliable results. 
+
+```{r}
+library(plm)
+library(sandwich)
+library(lmtest)
+
+robust_se <- coeftest(fixed_effects_model, vcov. = vcovHC(fixed_effects_model, type = "HC1", cluster = "group"))
+print(robust_se)
+```
+
+
+```{r}
+library(ggplot2)
+
+predicted_values2 <- predict(fixed_effects_model, newdata = panel_data)
+
+ggplot(data.frame(CapstoneProjectUpdated2Clean$GraduationRate, predicted_values2), 
+       aes(x = CapstoneProjectUpdated2Clean$GraduationRate, y = predicted_values2)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(title = "Predicted vs. Actual Graduation Rates",
+       x = "Actual Graduation Rate",
+       y = "Predicted Graduation Rate")
+```

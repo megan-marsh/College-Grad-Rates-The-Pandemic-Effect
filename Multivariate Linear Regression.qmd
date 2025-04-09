@@ -1,0 +1,184 @@
+---
+title: "Capstone Project: Multivariate Linear Regression Model"
+author: Megan Marsh
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: true
+format: 
+  html:
+    embed-resources: true
+editor: source
+---
+
+```{r}
+CapstoneProjectUpdated2 <- read.csv("Capstone/CapstoneProjectUpdated2 - CapstoneProjectUpdated (1).csv")
+
+#omit missing values (CapstoneProjectUpdated2Clean has additional variables than CapstoneUpdatedClean)
+CapstoneProjectUpdated2Clean <- na.omit(CapstoneProjectUpdated2)
+
+#multivariate linear model
+linear_regression_model_three <- lm(GraduationRate ~ CovidIndicator+ PercentWhite+ PercentWomen + Staff:CovidIndicator + AvgInStateTuition + RetentionRate + TotalEnrollment+ AvgPellGrant + AvgStudentLoans, data = CapstoneProjectUpdated2Clean)
+
+summary(linear_regression_model_three)
+print(linear_regression_model_three)
+```
+
+```{r}
+#linearity tests: residuals vs. fitted plot and rainbow test
+
+#residuals vs. fitted: the residuals should be randomly scattered around a horizontal line at zero
+#patterns or curves indicate non-linearity
+plot(linear_regression_model_three, 1)
+
+#rainbow test for non-linearity
+#null hypothesis: the relationship between the dependent variable and each independent variables is linear
+
+library(lmtest)
+raintest(linear_regression_model_three)
+```
+It appears the residuals are mostly randomly scattered around a horizontal line at zero. There are no distinct patterns of curves present, confirming linearity. For an added layer of assurance, the rainbow test will be used to assess linearity. When using this rainbow test, the p-value of 0.7123 (not below the chosen significance level of 0.05) suggests that there is not enough evidence to reject the null hypothesis. Thus, there is not enough evidence to reject the assumption of linearity of this multivariate linear regression model. 
+
+```{r}
+#test for homoscedasticity using the scale-location plot
+#the points should be randomly scattered around a horizontal line and no funnel shape patterns should be present
+plot(linear_regression_model_three, 3)
+
+
+#non-constant variance test for homoscedasticity
+#null hypothesis: the variance of the error terms (residuals) in regression model is constant (homoscedasticity)
+library(car)
+ncvTest(linear_regression_model_three)
+
+
+#breusch-pagan test for homoscedasticity 
+#null hypothesis: the variance of the error terms (residuals) in regression model is constant (homoscedasticity)
+bptest(linear_regression_model_three) 
+```
+
+The scale-location plot seems a bit inconclusive and therefore, additional testing is needed to determine homoscedasticity. The two homoscedasticity test used were the Non-Constant Variance Test and Breusch-Pagan Test. Both test have very small p-values (below the chosen significance level of 0.05), providing sufficient evidence to reject the null hypothesis of homoscedasticity. Thus, there heterscedasticity is present in the model. 
+
+
+```{r}
+#durbin-waston test for independence of errors (no autocorrelation)
+
+#a durbin-watson statistic around 2 indicates no autocorrelation (values significantly below 2 suggest positive autocorrelation and values significantly above 2 suggest negative autocorrelation)
+library(car)
+durbinWatsonTest(linear_regression_model_three)
+
+#breusch-godfrey test for independence of errors (no autocorrelation)
+library(lmtest)
+bgtest(linear_regression_model_three) 
+```
+The two test used to detect autocorrelation were the Durbin-Watson Test and Breusch-Godfrey Test. Both test yielded somewhat small p-values (barely below the chosen significance level of 0.05), providing sufficient evidence to reject the null hypothesis of no autocorrelation. Thus, there autocorrelation is present in the model; specifically, slight positive autocorrelation as autocorrelation value is 0.07097861 (slightly below two).
+
+
+Those so far, the multivariate linear regression model has fulfilled the assumption of linearity but not homoscedasticity and autocorrelation. Therefore, various robust standard errors techniques are used to adjust the variance-covariance matrix of the coefficient estimators in a manner that accounts for the potential autocorrelation and heteroscedasticity in the residuals.
+
+```{r}
+library(sandwich)
+library(lmtest)
+
+#using HC 
+robust_se_hc1 <- coeftest(linear_regression_model_three, vcov. = vcovHC(linear_regression_model_three, type = "HC1"))
+print("Results with HC1 Robust Standard Errors:")
+print(robust_se_hc1)
+
+#using HC3 (better for smaller sample sizes)
+robust_se_hc3 <- coeftest(linear_regression_model_three, vcov. = vcovHC(linear_regression_model_three, type = "HC3"))
+print("Results with HC3 Robust Standard Errors:")
+print(robust_se_hc3)
+
+#using newey-west standard errors (for BOTH autocorrelation and heteroskedasticity)
+#requires a time-series component and data must be ordered by year
+CapstoneProjectUpdated2Clean <- CapstoneProjectUpdated2Clean[order(CapstoneProjectUpdated2Clean$Year), ] 
+
+robust_se_newey_west <- coeftest(linear_regression_model_three, vcov. = NeweyWest(linear_regression_model_three))
+print("Results with Newey-West Robust Standard Errors:")
+print(robust_se_newey_west)
+```
+For this study, I used the results with newey-west robust standard errors as it adjusted the model p-values appropriately with the presence of autocorrelation and heteroskedasticity. Although, it should be noted that all robust standard erorr techniques produced very similar results.  
+
+
+According to the multivariate linear regression, beginning in 2020, the graduation rate is estimated to be 2.085 percentage points lower, holding all other factors constant.
+
+```{r}
+#due to having panel data, clustering by Unit ID is an option
+#this was not used in my project
+
+library(clubSandwich)
+
+clustered_se <- coeftest(linear_regression_model_three, vcov. = vcovCR(linear_regression_model_three, cluster = CapstoneProjectUpdated2Clean$UnitID, type = "CR2"))
+print("Results with Clustered Robust Standard Errors:")
+print(clustered_se)
+
+```
+
+
+
+```{r}
+#Q-Q Plot to test for the normality of residuals
+#if normally distributed, the points will fall approximately along a straight line
+plot(linear_regression_model_three, 2)
+
+#visual representation of the distribution of the residuals
+hist(residuals(linear_regression_model_three))
+
+#shapiro-wilk test for normal distribution of residuals
+#null hypothesis: data is normally distributed 
+shapiro.test(residuals(linear_regression_model_three))
+```
+
+
+While the distribution appears somewhat bell-shaped in the histogram, the bars are uneven, indicating deviations from the smooth, symmetrical curve of a perfect normal distribution. The Shapiro-Wilk test yielded a very small p-value (significantly below the chosen significance level of 0.05), providing sufficient evidence to reject the null hypothesis of normality of residuals. However, by the Central Limit Theorem, since we have a reasonable large sample size, the rejections of normality of residuals is not a major concern for the validity of inferences about the regression coefficients.
+
+
+```{r}
+#calculation for no multicollinearity
+
+#VIF values greater than 5 or 10 are generally considered to indicate high multicollinearity
+#ideally VIF value should be close to one
+library(car)
+vif(linear_regression_model_three, type="predictor")
+```
+
+All value inflation factors are close to one, solidifying no multicollinearity. 
+
+
+
+
+In conclusion, a graph was constructed to visualize the multivariate linear regressions model fit (remember the multiple R-squared value was 0.6081).
+
+```{r}
+library(ggplot2)
+
+predicted_values <- predict(linear_regression_model_three, newdata = CapstoneProjectUpdated2Clean)
+
+ggplot(data.frame(CapstoneProjectUpdated2Clean$GraduationRate, predicted_values), 
+       aes(x = CapstoneProjectUpdated2Clean$GraduationRate, y = predicted_values)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed") +
+  labs(title = "Predicted vs. Actual Graduation Rates",
+       x = "Actual Graduation Rate",
+       y = "Predicted Graduation Rate")
+```
+
+
+
+```{r}
+#scatter plot with regression lines highlighting pre and post pandemic periods
+library(ggplot2)
+
+ggplot(CapstoneProjectUpdated2Clean, aes(x = Year, y = GraduationRate, color = factor(CovidIndicator))) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Graduation Rate Over Time by COVID-19 Period",
+       x = "Time",
+       y = "Graduation Rate",
+       color = "COVID-19 Period") +
+  scale_color_discrete(labels = c("No", "Yes"))
+
+```
+
+To confirm the negative results of COVID-19 on graduation rate, a final graphic was created with the same data used to run the multivariate linear model. Prior to COVID-19, the average graduation rate is evidently increasing as the linear line representing the average is climbing uphill. That increase halts and the average graduation rate after COVID-19 seems to seems to remain constant. Not to mention, that the entire post-pandemic average rate is below the average ending rate in 2020. This coincides with the results of the multivariate linear model, as again, COVID-19 seems to have a negative effect on graduation rate.
