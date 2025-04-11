@@ -49,11 +49,11 @@ phtest(fixed_effects_model, random_effects_model)
 The Hausman Test verified the use of the fixed-effects model over the random-effects model. 
 
 ```{r}
-#To check for serial correlation:
+#breusch-godfrey test: to detect serial correlation
 pbgtest(fixed_effects_model)
 ```
 
-Based on the Breusch-Godfrey/Wooldridge test, there is no statistically significant evidence of serial correlation in the idiosyncratic errors of your panel data model at the 0.05 significance level. This suggests that the error terms for a given university across different time periods are likely independent after accounting for the other variables in your model.
+Based on the Breusch-Godfrey/Wooldridge test, there is no statistically significant evidence of serial correlation in the idiosyncratic errors. This suggests that the error terms for a given institution across different time periods are likely independent after accounting for the other variables in your model.
 
 ```{r}
 #breusch-pagan test for cross-sectional dependence 

@@ -3224,7 +3224,7 @@ alternative hypothesis: one model is inconsistent</code></pre>
 </div>
 <p>The Hausman Test verified the use of the fixed-effects model over the random-effects model.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">#To check for serial correlation:</span></span>
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co">#breusch-godfrey test: to detect serial correlation</span></span>
 <span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">pbgtest</span>(fixed_effects_model)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
 <pre><code>
@@ -3235,7 +3235,7 @@ chisq = 1.0938, df = 1, p-value = 0.2956
 alternative hypothesis: serial correlation in idiosyncratic errors</code></pre>
 </div>
 </div>
-<p>Based on the Breusch-Godfrey/Wooldridge test, there is no statistically significant evidence of serial correlation in the idiosyncratic errors of your panel data model at the 0.05 significance level. This suggests that the error terms for a given university across different time periods are likely independent after accounting for the other variables in your model.</p>
+<p>Based on the Breusch-Godfrey/Wooldridge test, there is no statistically significant evidence of serial correlation in the idiosyncratic errors. This suggests that the error terms for a given institution across different time periods are likely independent after accounting for the other variables in your model.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co">#breusch-pagan test for cross-sectional dependence </span></span>
 <span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a><span class="co">#null hypothesis: no cross-sectional dependence in the error terms (or residuals) of the different cross-sectional units</span></span>
