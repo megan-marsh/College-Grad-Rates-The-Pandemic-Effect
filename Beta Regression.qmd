@@ -52,8 +52,7 @@ ks.test(CapstoneProjectUpdated2Clean$GraduationRate, "pnorm", mean = mean(Capsto
 range(CapstoneProjectUpdated2Clean$GraduationRate)
 ```
 
-Beta regression is the preferred method for modeling graduation rates because it directly addresses the bounded nature, potential heteroscedasticity, and possible skewness of this type of data. Linear regression can be problematic and lead to inaccurate results. Always prioritize beta regression when your outcome is a proportion or percentage like a graduation rate.
-
+Beta regression is the preferred method for modeling graduation rates because it directly addresses the bounded nature, potential heteroscedasticity, and possible skewness of this type of data. 
 
 ```{r}
 if (!require("betareg")) install.packages("betareg")
