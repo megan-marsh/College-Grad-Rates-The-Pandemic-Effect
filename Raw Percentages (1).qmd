@@ -1,0 +1,122 @@
+---
+title: "Capstone Project: Raw Percentages"
+author: Megan Marsh
+execute:
+  echo: true
+  warning: false
+  message: false
+  error: true
+format: 
+  html:
+    embed-resources: true
+editor: source
+---
+
+```{r}
+CapstoneProjectUpdated <- read.csv("CapstoneProjectUpdated.csv")
+
+#clean data to omit missing values
+CapstoneProjectUpdatedClean <- na.omit(CapstoneProjectUpdated)
+```
+
+```{r}
+#compute average graduation rate by year
+average_graduation_rates <- aggregate(GraduationRate ~ Year, data = CapstoneProjectUpdatedClean, FUN = mean)
+print(average_graduation_rates)
+
+#compute standard deviation of graduation rate by year
+standard_dev_graduation_rates <- aggregate(GraduationRate ~ Year, data = CapstoneProjectUpdatedClean, FUN = sd)
+print(standard_dev_graduation_rates)
+```
+
+```{r}
+#create a histogram of graduation rates to check distribution
+hist(CapstoneProjectUpdatedClean$GraduationRate,
+     main = "Histogram of Graduation Rates for Ohio Post-Secondary Institutions",
+     xlab = "Graduation Rate",
+     ylab = "Frequency",
+     col = "lightblue", 
+     border = "darkblue",
+     breaks = 10)
+```
+
+```{r}
+#create the density function
+density_curve <- density(CapstoneProjectUpdatedClean$GraduationRate)
+
+y_range <- range(density_curve$y)
+
+#add the density curve to histogram
+hist(CapstoneProjectUpdated$GraduationRate,
+     main = "Histogram of Graduation Rates for Ohio Post-Secondary Institutions",
+     xlab = "Graduation Rate",
+     ylab = "Frequency",
+     col = "lightblue", 
+     border = "darkblue",
+     breaks = 10, freq = FALSE, 
+     ylim = y_range)
+lines(density_curve, col = "red")
+```
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+
+#ensure year is a numeric type
+CapstoneProjectUpdatedClean <- CapstoneProjectUpdatedClean %>%
+  mutate(Year = as.numeric(as.character(Year)))
+
+#create the graph
+ggplot(CapstoneProjectUpdatedClean, aes(x = Year, y = GraduationRate, group = InstitutionName)) +
+  geom_line(alpha = 0.3) + 
+  labs(
+    title = "Graduation Rates Over Time for 190 Ohio Institutions",
+    x = "Year",
+    y = "Graduation Rate (%)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none") + 
+  scale_x_continuous(breaks = unique(CapstoneProjectUpdatedClean$Year)) 
+```
+
+```{r}
+highlighted_institutions<-c("Sinclair Community College", "Edison State Community College","Clark State College","University of Dayton", "Wittenberg University", "Wright State University-Main Campus", "Cedarville University")
+
+two_year_highlighted_institutions <- c("Sinclair Community College", "Edison State Community College","Clark State College")
+
+four_year_highlighted_institutions <- c("University of Dayton", "Wittenberg University", "Wright State University-Main Campus", "Cedarville University")
+
+ggplot(CapstoneProjectUpdatedClean, aes(x = Year, y = GraduationRate, group = InstitutionName)) +
+  geom_line(alpha = 0.1) +
+  geom_line(data = CapstoneProjectUpdatedClean %>% filter(InstitutionName %in% two_year_highlighted_institutions), aes(group = InstitutionName, color=InstitutionName), linewidth = 1) +
+  labs(title = "Graduation Rates Over Time 2-Year Universities within 40 Miles of Piqua, Ohio",
+  x = "Year",
+  y = "Graduation Rate (%)",
+  color = "Highlighted Institutions"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(breaks = unique(CapstoneProjectUpdatedClean$Year))
+
+ggplot(CapstoneProjectUpdatedClean, aes(x = Year, y = GraduationRate, group = InstitutionName)) +
+  geom_line(alpha = 0.1) +
+  geom_line(data = CapstoneProjectUpdatedClean %>% filter(InstitutionName %in% four_year_highlighted_institutions), aes(group = InstitutionName, color=InstitutionName), linewidth = 1) +
+  labs(title = "Graduation Rates Over Time 4-Year Universities within 40 Miles of Piqua, Ohio",
+  x = "Year",
+  y = "Graduation Rate (%)",
+  color = "Highlighted Institutions"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(breaks = unique(CapstoneProjectUpdatedClean$Year))
+
+
+ggplot(CapstoneProjectUpdatedClean, aes(x = Year, y = PercentOnlineOnly, group = InstitutionName)) +
+  geom_line(alpha = 0.1) +
+  geom_line(data = CapstoneProjectUpdatedClean %>% filter(InstitutionName %in% highlighted_institutions), aes(group = InstitutionName, color=InstitutionName), linewidth = 1) +
+  labs(title = "Percent Exclusively Online for Institutions within 40 Miles of Piqua, Ohio",
+  x = "Year",
+  y = "Online Only (%)",
+  color = "Highlighted Institutions"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(breaks = unique(CapstoneProjectUpdatedClean$Year))
+```
